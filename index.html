@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-900 text-slate-100 selection:bg-indigo-500 selection:text-white">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Studio — Advanced Table Generator & GitHub-Flavored Preview</title>
+    
+    <meta name="description" content="Professional web application to generate complex Markdown tables and preview GitHub-Flavored Markdown in real-time. Built by SPY-E & 123Tool.">
+    <meta name="author" content="SPY-E & 123Tool">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#312e81'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* GitHub-Flavored Markdown Preview Custom Styling */
+        .gfm-preview h1 { @apply text-2xl font-bold border-b border-slate-700 pb-2 mb-4 mt-6 first:mt-0; }
+        .gfm-preview h2 { @apply text-xl font-semibold border-b border-slate-700 pb-1 mb-4 mt-5; }
+        .gfm-preview h3 { @apply text-lg font-semibold mb-3 mt-4; }
+        .gfm-preview p { @apply mb-4 text-slate-300 leading-relaxed; }
+        .gfm-preview code { @apply mono bg-slate-800 px-1.5 py-0.5 rounded text-sm text-pink-400; }
+        .gfm-preview pre { @apply bg-slate-950 p-4 rounded-lg overflow-x-auto mb-4 border border-slate-800; }
+        .gfm-preview pre code { @apply p-0 bg-transparent rounded-none text-slate-200 block text-xs leading-5; }
+        .gfm-preview ul { @apply list-disc pl-6 mb-4 space-y-1 text-slate-300; }
+        .gfm-preview ol { @apply list-decimal pl-6 mb-4 space-y-1 text-slate-300; }
+        
+        /* GFM Table Rendering */
+        .gfm-preview table { @apply w-full border-collapse mb-4 overflow-x-auto block md:table; }
+        .gfm-preview th { @apply bg-slate-800/80 font-semibold border border-slate-700 px-4 py-2 text-left text-sm; }
+        .gfm-preview td { @apply border border-slate-700 px-4 py-2 text-sm text-slate-300; }
+        .gfm-preview tr:nth-child(even) { @apply bg-slate-800/30; }
+        
+        .gfm-preview blockquote { @apply border-l-4 border-slate-600 pl-4 italic text-slate-400 my-4; }
+        .gfm-preview a { @apply text-indigo-400 hover:underline; }
+    </style>
+</head>
+<body class="h-full flex flex-col justify-between antialiased selection:bg-brand-500/30">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-table-cells text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                        Markdown Studio
+                    </h1>
+                    <p class="text-xs text-slate-500 font-medium">Table Generator & Live GFM Engine</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4 text-xs font-mono text-slate-500 bg-slate-950/60 px-4 py-2 rounded-lg border border-slate-800">
+                <span class="flex items-center gap-1.5">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Engine v1.0.0
+                </span>
+                <span class="text-slate-700">|</span>
+                <span>Core: <span class="text-slate-400">123Tool</span></span>
+                <span class="text-slate-700">|</span>
+                <span>Secured by: <span class="text-slate-400">SPY-E</span></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <section class="lg:col-span-7 space-y-6">
+            
+            <div class="bg-slate-800/40 border border-slate-800 rounded-xl p-5 backdrop-blur-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold tracking-wider uppercase text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-brand-500"></i> Generator Configuration
+                    </h2>
+                    <div class="flex gap-2">
+                        <button id="btnResetTable" class="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-md transition duration-200 border border-slate-700">
+                            <i class="fa-solid fa-rotate-right mr-1"></i> Reset
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1.5">Baris (Rows)</label>
+                        <div class="relative">
+                            <input type="number" id="inputRows" min="1" max="100" value="3" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition font-medium">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1.5">Kolom (Columns)</label>
+                        <div class="relative">
+                            <input type="number" id="inputCols" min="1" max="20" value="3" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition font-medium">
+                        </div>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-slate-400 mb-1.5">Preset Template Instan</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="TableModule.loadPreset('pricing')" class="px-3 py-2 bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 rounded-lg text-left transition truncate">
+                                💰 Pricing Table
+                            </button>
+                            <button onclick="TableModule.loadPreset('specs')" class="px-3 py-2 bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 rounded-lg text-left transition truncate">
+                                💻 Tech Specs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/40 border border-slate-800 rounded-xl p-5 backdrop-blur-sm overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold tracking-wider uppercase text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-keyboard text-brand-500"></i> Dynamic Grid Data Input
+                    </h2>
+                    <span class="text-[11px] text-slate-500 italic">Perubahan otomatis memperbarui kode markdown & preview</span>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+                    <table id="dynamicMatrixTable" class="w-full border-collapse">
+                        </table>
+                </div>
+                
+                <div class="flex flex-wrap gap-2 mt-3">
+                    <button id="btnAddRow" class="text-xs bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-md transition flex items-center gap-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Tambah Baris
+                    </button>
+                    <button id="btnAddCol" class="text-xs bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-md transition flex items-center gap-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Tambah Kolom
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/40 border border-slate-800 rounded-xl p-5 backdrop-blur-sm relative group">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold tracking-wider uppercase text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-code text-indigo-400"></i> Raw Markdown Code Output
+                    </h2>
+                    <button id="btnCopyMarkdown" class="bg-brand-600 hover:bg-brand-700 text-white font-medium text-xs px-4 py-2 rounded-lg transition duration-200 flex items-center gap-2 active:scale-95 shadow-lg shadow-brand-600/10">
+                        <i class="fa-solid fa-copy"></i> Copy Code
+                    </button>
+                </div>
+                <div class="relative">
+                    <textarea id="markdownOutput" readonly class="mono w-full h-48 bg-slate-950 text-slate-300 rounded-lg p-4 border border-slate-800 focus:outline-none focus:border-indigo-500 text-xs leading-relaxed resize-none"></textarea>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="lg:col-span-5 h-full lg:sticky lg:top-24">
+            <div class="bg-slate-800/40 border border-slate-800 rounded-xl flex flex-col max-h-[calc(100vh-10rem)] backdrop-blur-sm overflow-hidden">
+                
+                <div class="border-b border-slate-800 bg-slate-900/50 px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="flex h-2 w-2 rounded-full bg-indigo-500"></span>
+                        <h2 class="text-xs font-bold tracking-wider uppercase text-slate-400">
+                            GitHub-Flavored Live Preview
+                        </h2>
+                    </div>
+                    <div class="flex bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                        <button id="tabBtnPreview" class="px-3 py-1 text-xs font-medium rounded-md transition bg-brand-600 text-white shadow">
+                            Rendered
+                        </button>
+                        <button id="tabBtnRaw" class="px-3 py-1 text-xs font-medium rounded-md transition text-slate-400 hover:text-white">
+                            Raw Editor Mode
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-5 overflow-y-auto flex-1 h-[536px] bg-slate-900/40">
+                    
+                    <div id="previewRenderedContainer" class="gfm-preview text-slate-300">
+                        </div>
+
+                    <div id="previewRawContainer" class="hidden h-full">
+                        <textarea id="rawSandboxTextarea" class="mono w-full h-full bg-transparent border-0 resize-none focus:outline-none text-xs text-slate-400 leading-relaxed" placeholder="Ketik manual markdown kustom di sini untuk menguji kapabilitas rendering engine..."></textarea>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-800 bg-slate-950/60 px-4 py-2.5 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                    <span>XSS Sanitation: Active</span>
+                    <span>Engine: MarkedJS + DOMPurify</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-slate-800/80 bg-slate-950/40 px-6 py-4 mt-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-500">
+            <div>
+                &copy; 2026 <span class="text-slate-400">Markdown Studio</span>. All rights reserved.
+            </div>
+            <div class="flex items-center space-x-6">
+                <span class="hover:text-slate-400 cursor-help transition"><i class="fa-solid fa-shield-halved mr-1 text-brand-500/80"></i> Production Ready</span>
+                <span class="text-slate-700">|</span>
+                <span class="hover:text-slate-400 transition">Design Architecture by SPY-E</span>
+                <span class="text-slate-700">|</span>
+                <span class="hover:text-slate-400 transition">Distribution Core by 123Tool</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        /**
+         * @namespace MarkdownStudio
+         * Core architecture based on State-Driven reactive pipeline principles.
+         */
+        
+        // Comprehensive default state templates
+        const PRESETS = {
+            pricing: {
+                headers: ["Fitur Plan", "Free Tier", "Pro Premium"],
+                alignments: ["left", "center", "center"],
+                rows: [
+                    ["Cloud Storage", "5 GB", "500 GB"],
+                    ["API Access", "No Access", "Unlimited v1"],
+                    ["Monthly Support", "Community", "24/7 Priority SLA"]
+                ]
+            },
+            specs: {
+                headers: ["Component", "Minimum Requirement", "Recommended Spec"],
+                alignments: ["left", "left", "left"],
+                rows: [
+                    ["Processor Architecture", "Intel Core i3 Gen 10", "Apple M-Series or Core i7"],
+                    ["RAM System", "8 GB DDR4", "16 GB LPDDR5 Dual Channel"],
+                    ["Graphics / GPU", "Integrated Intel HD", "NVIDIA RTX 4060 Professional"]
+                ]
+            }
+        };
+
+        // Application Engine Scope Core 
+        const TableModule = (function () {
+            // Internal Central App State
+            let state = {
+                currentRowsCount: 3,
+                currentColsCount: 3,
+                alignments: ["left", "left", "left"], // Array of alignment per column: 'left' | 'center' | 'right'
+                headers: ["Header 1", "Header 2", "Header 3"],
+                matrixData: [
+                    ["Baris 1 Kolom 1", "Baris 1 Kolom 2", "Baris 1 Kolom 3"],
+                    ["Baris 2 Kolom 1", "Baris 2 Kolom 2", "Baris 2 Kolom 3"],
+                    ["Baris 3 Kolom 1", "Baris 3 Kolom 2", "Baris 3 Kolom 3"]
+                ],
+                activeTab: "rendered", // 'rendered' | 'raw'
+                isRawSandboxDirty: false
+            };
+
+            // Cached DOM Element Nodes selectors
+            let DOM = {};
+
+            function cacheElements() {
+                DOM.inputRows = document.getElementById("inputRows");
+                DOM.inputCols = document.getElementById("inputCols");
+                DOM.dynamicMatrixTable = document.getElementById("dynamicMatrixTable");
+                DOM.markdownOutput = document.getElementById("markdownOutput");
+                DOM.previewRenderedContainer = document.getElementById("previewRenderedContainer");
+                DOM.previewRawContainer = document.getElementById("previewRawContainer");
+                DOM.rawSandboxTextarea = document.getElementById("rawSandboxTextarea");
+                DOM.btnCopyMarkdown = document.getElementById("btnCopyMarkdown");
+                DOM.btnResetTable = document.getElementById("btnResetTable");
+                DOM.btnAddRow = document.getElementById("btnAddRow");
+                DOM.btnAddCol = document.getElementById("btnAddCol");
+                DOM.tabBtnPreview = document.getElementById("tabBtnPreview");
+                DOM.tabBtnRaw = document.getElementById("tabBtnRaw");
+            }
+
+            function registerEventListeners() {
+                // Event change bindings
+                DOM.inputRows.addEventListener("change", handleRowColInputChange);
+                DOM.inputCols.addEventListener("change", handleRowColInputChange);
+                
+                // Operations buttons bindings
+                DOM.btnAddRow.addEventListener("click", addNewRowOperation);
+                DOM.btnAddCol.addEventListener("click", addNewColOperation);
+                DOM.btnResetTable.addEventListener("click", resetToDefaultState);
+                DOM.btnCopyMarkdown.addEventListener("click", copyOutputToClipboard);
+
+                // Tab layout engine switcher
+                DOM.tabBtnPreview.addEventListener("click", () => switchPreviewTab("rendered"));
+                DOM.tabBtnRaw.addEventListener("click", () => switchPreviewTab("raw"));
+
+                // Live Sandbox raw listener textarea
+                DOM.rawSandboxTextarea.addEventListener("input", handleRawSandboxInput);
+            }
+
+            // Initialization execution pipeline
+            function init() {
+                cacheElements();
+                registerEventListeners();
+                
+                // Configure Marked Parser rendering flags configuration
+                marked.setOptions({
+                    gfm: true,
+                    breaks: true,
+                    headerIds: false,
+                    mangle: false
+                });
+
+                renderStateView();
+            }
+
+            // Sync structural matrix data with input forms changes
+            function handleRowColInputChange() {
+                let targetRows = parseInt(DOM.inputRows.value) || 1;
+                let targetCols = parseInt(DOM.inputCols.value) || 1;
+
+                // Restrict boundary limits safely
+                if (targetRows < 1) targetRows = 1; if (targetRows > 100) targetRows = 100;
+                if (targetCols < 1) targetCols = 1; if (targetCols > 20) targetCols = 20;
+
+                DOM.inputRows.value = targetRows;
+                DOM.inputCols.value = targetCols;
+
+                synchronizeMatrixDimensions(targetRows, targetCols);
+                renderStateView();
+            }
+
+            function synchronizeMatrixDimensions(targetRows, targetCols) {
+                state.currentRowsCount = targetRows;
+                state.currentColsCount = targetCols;
+
+                // Adjust column headers state dimensions
+                while (state.headers.length < targetCols) {
+                    state.headers.push(`Header ${state.headers.length + 1}`);
+                }
+                if (state.headers.length > targetCols) {
+                    state.headers = state.headers.slice(0, targetCols);
+                }
+
+                // Adjust column alignments state dimensions
+                while (state.alignments.length < targetCols) {
+                    state.alignments.push("left");
+                }
+                if (state.alignments.length > targetCols) {
+                    state.alignments = state.alignments.slice(0, targetCols);
+                }
+
+                // Adjust rows array dimensions
+                while (state.matrixData.length < targetRows) {
+                    let newRow = new Array(targetCols).fill("");
+                    state.matrixData.push(newRow);
+                }
+                if (state.matrixData.length > targetRows) {
+                    state.matrixData = state.matrixData.slice(0, targetRows);
+                }
+
+                // Adjust cells in individual rows to match column dimension bounds
+                state.matrixData = state.matrixData.map(row => {
+                    while (row.length < targetCols) row.push("");
+                    if (row.length > targetCols) return row.slice(0, targetCols);
+                    return row;
+                });
+            }
+
+            function addNewRowOperation() {
+                let current = parseInt(DOM.inputRows.value) || 0;
+                DOM.inputRows.value = current + 1;
+                handleRowColInputChange();
+            }
+
+            function addNewColOperation() {
+                let current = parseInt(DOM.inputCols.value) || 0;
+                DOM.inputCols.value = current + 1;
+                handleRowColInputChange();
+            }
+
+            function updateCellStateValue(type, rowIndex, colIndex, value) {
+                if (type === "header") {
+                    state.headers[colIndex] = value;
+                } else if (type === "cell") {
+                    state.matrixData[rowIndex][colIndex] = value;
+                }
+                state.isRawSandboxDirty = false;
+                processCompileMarkdownOutput();
+            }
+
+            function cycleAlignmentState(colIndex) {
+                const CycleOrder = ["left", "center", "right"];
+                let currentIdx = CycleOrder.indexOf(state.alignments[colIndex]);
+                let nextIdx = (currentIdx + 1) % CycleOrder.length;
+                state.alignments[colIndex] = CycleOrder[nextIdx];
+                
+                renderStateView();
+            }
+
+            function resetToDefaultState() {
+                state.currentRowsCount = 3;
+                state.currentColsCount = 3;
+                state.alignments = ["left", "left", "left"];
+                state.headers = ["Header 1", "Header 2", "Header 3"];
+                state.matrixData = [
+                    ["Baris 1 Kolom 1", "Baris 1 Kolom 2", "Baris 1 Kolom 3"],
+                    ["Baris 2 Kolom 1", "Baris 2 Kolom 2", "Baris 2 Kolom 3"],
+                    ["Baris 3 Kolom 1", "Baris 3 Kolom 2", "Baris 3 Kolom 3"]
+                ];
+                state.isRawSandboxDirty = false;
+
+                DOM.inputRows.value = 3;
+                DOM.inputCols.value = 3;
+
+                renderStateView();
+            }
+
+            function loadPreset(key) {
+                if (!PRESETS[key]) return;
+                const preset = PRESETS[key];
+                
+                state.currentRowsCount = preset.rows.length;
+                state.currentColsCount = preset.headers.length;
+                state.headers = [...preset.headers];
+                state.alignments = [...preset.alignments];
+                state.matrixData = preset.rows.map(innerRow => [...innerRow]);
+                state.isRawSandboxDirty = false;
+
+                DOM.inputRows.value = state.currentRowsCount;
+                DOM.inputCols.value = state.currentColsCount;
+
+                renderStateView();
+            }
+
+            // Core Logic Matrix Processing Markdown Renderer
+            function processCompileMarkdownOutput() {
+                if (state.isRawSandboxDirty) return; // Skip compiling if raw editor mode takes command overrides
+
+                let markdownString = "";
+                
+                // 1. Compile Header Text Row
+                markdownString += "| " + state.headers.map(h => h.trim() || " ").join(" | ") + " |\n";
+                
+                // 2. Compile Syntax Divider Track Alignments Row
+                let separatorParts = state.alignments.map(align => {
+                    if (align === "center") return ":---:";
+                    if (align === "right") return "---:";
+                    return ":---";
+                });
+                markdownString += "| " + separatorParts.join(" | ") + " |\n";
+
+                // 3. Compile Core Data Body Matrix Rows
+                state.matrixData.forEach(row => {
+                    markdownString += "| " + row.map(cell => cell.trim() || " ").join(" | ") + " |\n";
+                });
+
+                DOM.markdownOutput.value = markdownString;
+                
+                if (state.activeTab === "rendered") {
+                    updateRenderedHTMLPreview(markdownString);
+                } else {
+                    DOM.rawSandboxTextarea.value = markdownString;
+                }
+            }
+
+            function updateRenderedHTMLPreview(markdownRawText) {
+                try {
+                    // Fast Markdown generation conversion pipeline
+                    let cleanHTML = DOMPurify.sanitize(marked.parse(markdownRawText));
+                    DOM.previewRenderedContainer.innerHTML = cleanHTML || `<p class="text-slate-500 italic text-xs">Kosong / Menunggu input tabel...</p>`;
+                } catch (error) {
+                    DOM.previewRenderedContainer.innerHTML = `<div class="p-3 bg-red-950/40 border border-red-900 rounded-lg text-xs text-red-400 font-mono">Parsing Runtime Error Engine Exception: ${error.message}</div>`;
+                }
+            }
+
+            function handleRawSandboxInput(event) {
+                state.isRawSandboxDirty = true;
+                let rawMarkdownText = event.target.value;
+                DOM.markdownOutput.value = rawMarkdownText;
+            }
+
+            function switchPreviewTab(targetTab) {
+                state.activeTab = targetTab;
+                
+                if (targetTab === "rendered") {
+                    DOM.tabBtnPreview.className = "px-3 py-1 text-xs font-medium rounded-md transition bg-brand-600 text-white shadow";
+                    DOM.tabBtnRaw.className = "px-3 py-1 text-xs font-medium rounded-md transition text-slate-400 hover:text-white";
+                    
+                    DOM.previewRenderedContainer.classList.remove("hidden");
+                    DOM.previewRawContainer.classList.add("hidden");
+                    
+                    // Render current compiled output text strings 
+                    updateRenderedHTMLPreview(DOM.markdownOutput.value);
+                } else {
+                    DOM.tabBtnRaw.className = "px-3 py-1 text-xs font-medium rounded-md transition bg-brand-600 text-white shadow";
+                    DOM.tabBtnPreview.className = "px-3 py-1 text-xs font-medium rounded-md transition text-slate-400 hover:text-white";
+                    
+                    DOM.previewRawContainer.classList.remove("hidden");
+                    DOM.previewRenderedContainer.classList.add("hidden");
+                    
+                    DOM.rawSandboxTextarea.value = DOM.markdownOutput.value;
+                }
+            }
+
+            function copyOutputToClipboard() {
+                const codeText = DOM.markdownOutput.value;
+                if (!codeText.trim()) return;
+
+                navigator.clipboard.writeText(codeText).then(() => {
+                    const origHtml = DOM.btnCopyMarkdown.innerHTML;
+                    DOM.btnCopyMarkdown.className = "bg-emerald-600 text-white font-medium text-xs px-4 py-2 rounded-lg transition duration-200 flex items-center gap-2 shadow-lg shadow-emerald-600/10";
+                    DOM.btnCopyMarkdown.innerHTML = `<i class="fa-solid fa-check"></i> Copied!`;
+                    
+                    setTimeout(() => {
+                        DOM.btnCopyMarkdown.className = "bg-brand-600 hover:bg-brand-700 text-white font-medium text-xs px-4 py-2 rounded-lg transition duration-200 flex items-center gap-2 active:scale-95 shadow-lg shadow-brand-600/10";
+                        DOM.btnCopyMarkdown.innerHTML = origHtml;
+                    }, 2000);
+                }).catch(err => {
+                    console.error("Critical fail writing onto target user device clipboard buffer stream: ", err);
+                });
+            }
+
+            // Primary UI Matrix Rendering Renderer 
+            function renderStateView() {
+                let tableDOMString = "";
+
+                // Generate table operational row headers representation
+                tableDOMString += `<thead><tr class="bg-slate-900 border-b border-slate-800">`;
+                for (let c = 0; c < state.currentColsCount; c++) {
+                    let currentAlign = state.alignments[c] || "left";
+                    let alignIcon = "fa-align-left";
+                    if (currentAlign === "center") alignIcon = "fa-align-center";
+                    if (currentAlign === "right") alignIcon = "fa-align-right";
+
+                    tableDOMString += `
+                        <th class="p-2 border-r border-slate-800 min-w-[150px]">
+                            <div class="flex items-center space-x-1.5">
+                                <button onclick="TableModule.cycleAlignmentState(${c})" title="Ubah alignment kolom ini" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-indigo-400 rounded transition text-xs">
+                                    <i class="fa-solid ${alignIcon}"></i>
+                                </button>
+                                <input type="text" value="${escapeHtmlAttribute(state.headers[c] || '')}" 
+                                    oninput="TableModule.updateCellStateValue('header', null, ${c}, this.value)"
+                                    class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-semibold" placeholder="Header ${c+1}">
+                            </div>
+                        </th>`;
+                }
+                tableDOMString += `</tr></thead>`;
+
+                // Generate table multi rows elements matrix representation
+                tableDOMString += `<tbody class="divide-y divide-slate-800/60">`;
+                for (let r = 0; r < state.currentRowsCount; r++) {
+                    tableDOMString += `<tr class="hover:bg-slate-900/30 transition">`;
+                    for (let c = 0; c < state.currentColsCount; c++) {
+                        let cellVal = state.matrixData[r][c] || "";
+                        let alignmentTextClass = "text-left";
+                        if (state.alignments[c] === "center") alignmentTextClass = "text-center";
+                        if (state.alignments[c] === "right") alignmentTextClass = "text-right";
+
+                        tableDOMString += `
+                            <td class="p-2 border-r border-slate-800">
+                                <input type="text" value="${escapeHtmlAttribute(cellVal)}" 
+                                    oninput="TableModule.updateCellStateValue('cell', ${r}, ${c}, this.value)"
+                                    class="w-full bg-transparent border border-transparent hover:border-slate-800 focus:bg-slate-950 focus:border-brand-500 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none transition ${alignmentTextClass}" placeholder="...">
+                            </td>`;
+                    }
+                    tableDOMString += `</tr>`;
+                }
+                tableDOMString += `</tbody>`;
+
+                DOM.dynamicMatrixTable.innerHTML = tableDOMString;
+
+                // Fire process compile calculation chain stream inline execution triggers
+                processCompileMarkdownOutput();
+            }
+
+            function escapeHtmlAttribute(str) {
+                return str
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            // Expose structural scope interface public methods safely
+            return {
+                init: init,
+                updateCellStateValue: updateCellStateValue,
+                cycleAlignmentState: cycleAlignmentState,
+                loadPreset: loadPreset
+            };
+        })();
+
+        // Bootstrap Core App Scope Runner Thread Hook
+        document.addEventListener("DOMContentLoaded", () => {
+            TableModule.init();
+        });
+    </script>
+</body>
+</html>
